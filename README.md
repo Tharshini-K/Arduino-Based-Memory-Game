@@ -62,6 +62,19 @@ Arduino-Based Memory Gaming System is an interactive memory game inspired by the
 
 ---
 
+
+## ▶️ Installation
+
+```bash
+git clone https://github.com/your-username/Arduino-Based-Memory-Gaming-System.git
+
+cd Arduino-Based-Memory-Gaming-System
+
+python memory_game.py
+```
+
+---
+
 ## 🔮 Future Enhancements
 - High score tracking
 - Multiplayer mode
