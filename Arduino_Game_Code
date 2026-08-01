@@ -1,0 +1,276 @@
+
+import tkinter as tk
+import random
+import winsound
+
+# ---------------- VARIABLES ----------------
+pattern = []
+user_pattern = []
+level = 0
+animating = False
+
+colors = ["red", "green", "blue", "yellow"]
+
+positions = {
+    0: (0, 0),
+    1: (0, 1),
+    2: (1, 0),
+    3: (1, 1)
+}
+
+selected_index = 0
+
+normal_colors = {
+    "red": "#990000",
+    "green": "#006622",
+    "blue": "#004c99",
+    "yellow": "#999900"
+}
+
+bright_colors = {
+    "red": "#ff1a1a",
+    "green": "#00ff66",
+    "blue": "#33bbff",
+    "yellow": "#ffff33"
+}
+
+dull_color = "#111111"
+
+sound_freq = {
+    "red": 500,
+    "green": 650,
+    "blue": 800,
+    "yellow": 950
+}
+
+# ---------------- WINDOW ----------------
+root = tk.Tk()
+root.title("Memory Light Game")
+root.geometry("520x650")
+root.configure(bg="black")
+root.resizable(False, False)
+root.focus_set()
+
+# ---------------- UI ----------------
+title = tk.Label(root, text="MEMORY LIGHT GAME",
+                 font=("Arial", 22, "bold"),
+                 bg="black", fg="white")
+title.pack(pady=15)
+
+status_label = tk.Label(root, text="PRESS START",
+                        font=("Arial", 18, "bold"),
+                        bg="black", fg="white")
+status_label.pack(pady=10)
+
+level_label = tk.Label(root, text="Level: 0",
+                       font=("Arial", 14),
+                       bg="black", fg="white")
+level_label.pack()
+
+frame = tk.Frame(root, bg="black")
+frame.pack(pady=30)
+
+buttons = {}
+
+# ---------------- SOUND ----------------
+def play_tone(color, duration=180):
+    winsound.Beep(sound_freq[color], duration)
+
+def win_sound():
+    winsound.Beep(1000, 300)
+    winsound.Beep(1200, 300)
+    winsound.Beep(1400, 500)
+
+def lose_sound():
+    # Loud glitch warning
+    winsound.Beep(2000, 2000)
+    winsound.Beep(1500, 400)
+
+    # # Slow falling dramatic sound
+    # for freq in range(900, 200, -30):
+    #     winsound.Beep(freq, 70)
+
+    # # Deep final crash
+    # winsound.Beep(150, 1000)
+
+
+# ---------------- RESTORE BUTTONS ----------------
+def restore_buttons():
+    for c in colors:
+        buttons[c].config(
+            bg=normal_colors[c],
+            width=12,
+            height=6
+        )
+    highlight_selected()
+
+# ---------------- CURSOR HIGHLIGHT ----------------
+def highlight_selected():
+    for i, c in enumerate(colors):
+        if i == selected_index:
+            buttons[c].config(
+                highlightbackground="white",
+                highlightthickness=4,
+                width=13,
+                height=7
+            )
+        else:
+            buttons[c].config(
+                highlightthickness=0
+            )
+
+# ---------------- FLASH EFFECT ----------------
+def flash(color, callback=None):
+    global animating
+    animating = True
+
+    # Make others dull
+    for c in colors:
+        if c != color:
+            buttons[c].config(
+                bg=dull_color,
+                width=12,
+                height=6
+            )
+
+    # Make selected one bigger and bright
+    buttons[color].config(
+        bg=bright_colors[color],
+        width=15,
+        height=8
+    )
+
+    play_tone(color)
+
+    root.after(250, lambda: finish_flash(callback))
+
+def finish_flash(callback):
+    restore_buttons()
+    global animating
+    animating = False
+    if callback:
+        root.after(120, callback)
+
+# ---------------- SHOW PATTERN ----------------
+def show_pattern(index=0):
+    if index < len(pattern):
+        flash(pattern[index],
+              lambda: show_pattern(index + 1))
+    else:
+        status_label.config(text="YOUR TURN 🎯", fg="lime")
+
+# ---------------- NEXT LEVEL ----------------
+def next_level():
+    global level, user_pattern
+
+    user_pattern = []
+    level += 1
+    level_label.config(text=f"Level: {level}")
+    status_label.config(text="WATCH CAREFULLY 👀", fg="yellow")
+
+    pattern.append(random.choice(colors))
+    root.after(600, lambda: show_pattern(0))
+
+# ---------------- START GAME ----------------
+def start_game():
+    global pattern, level
+    pattern = []
+    level = 0
+    level_label.config(text="Level: 0")
+    status_label.config(text="Get Ready...", fg="white")
+    root.after(600, next_level)
+
+# ---------------- HANDLE INPUT ----------------
+def handle_input(color):
+    global user_pattern
+
+    if animating:
+        return
+
+    flash(color)
+
+    user_pattern.append(color)
+
+    if user_pattern != pattern[:len(user_pattern)]:
+        status_label.config(text="GAME OVER ❌", fg="red")
+        lose_sound()
+        return
+
+    if len(user_pattern) == len(pattern):
+        status_label.config(text="CORRECT! ✅", fg="cyan")
+        win_sound()
+        root.after(800, next_level)
+
+# ---------------- KEYBOARD CONTROL ----------------
+def key_pressed(event):
+    global selected_index
+
+    if animating:
+        return
+
+    key_map = {
+        "r": "red",
+        "g": "green",
+        "b": "blue",
+        "y": "yellow"
+    }
+
+    if event.char.lower() in key_map:
+        handle_input(key_map[event.char.lower()])
+        return
+
+    row, col = positions[selected_index]
+
+    if event.keysym == "Left" and col > 0:
+        col -= 1
+    elif event.keysym == "Right" and col < 1:
+        col += 1
+    elif event.keysym == "Up" and row > 0:
+        row -= 1
+    elif event.keysym == "Down" and row < 1:
+        row += 1
+    elif event.keysym == "Return":
+        handle_input(colors[selected_index])
+        return
+    else:
+        return
+
+    for i, pos in positions.items():
+        if pos == (row, col):
+            selected_index = i
+            break
+
+    highlight_selected()
+
+# ---------------- CREATE BUTTONS ----------------
+for i, color in enumerate(colors):
+    btn = tk.Button(frame,
+                    bg=normal_colors[color],
+                    width=12,
+                    height=6,
+                    bd=6,
+                    relief="raised",
+                    takefocus=0,
+                    command=lambda c=color: handle_input(c))
+    btn.grid(row=positions[i][0],
+             column=positions[i][1],
+             padx=18, pady=18)
+    buttons[color] = btn
+
+highlight_selected()
+
+# ---------------- START BUTTON ----------------
+start_btn = tk.Button(root,
+                      text="START",
+                      font=("Arial", 14, "bold"),
+                      bg="orange",
+                      fg="black",
+                      width=15,
+                      height=2,
+                      command=start_game,
+                      takefocus=0)
+start_btn.pack(pady=20)
+
+root.bind("<Key>", key_pressed)
+
+root.mainloop()
